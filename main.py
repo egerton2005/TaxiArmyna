@@ -22,6 +22,16 @@ Const_povovorot = 170
 REFLECTION_LIMIT = 10
 SPEED_FLINE = 150
 SLOW_SPEED_FLINE = 50
+Color.BLACK = 1
+Color.BLUE = 2
+Color.GREEN = 3
+Color.YELLOW = 4
+Color.RED = 5
+Color.WHITE = 6
+Color.BROWN = 7
+location = [
+False,False,False,False,False,False
+]
 
 
 def povorot(angle):
@@ -61,7 +71,7 @@ def crossroad (crossroadCounts):
 
 
 
-def readingОbstacles (obstacleCounts)
+def readingОbstacles (obstacleCounts):
     obstacle = 0   
     readingОbstacles = False
     while(True):
@@ -92,13 +102,32 @@ def fline(reflectionLEFT, reflectionRight):
                 motorRule(SPEED_FLINE,SPEED_FLINE)
 
 
+def thisColor(colorSensor):
+    if colorSensor.Color() != None:
+        color = colorSensor.Color()
+    return color
 
-       
-
+def distributor():
+    step = 0
+    while(0<6):
+        readingОbstacles(1)#Проехал до кубика
+        colorFirst = thisColor()#считал цвет кубика
+        #прокрутка вниз
+        #взять
+        #прокрутка вверх
+        readingОbstacles(5 - step + 1)
+        for( x in range(0,6)):
+            colorSecond = thisColor()
+            if(colorFirst==colorSecond & location[x] == False):
+                #прокрутка вниз
+                #поставить
+                #прокрутка вверх
+                location[x] == True
+                readingОbstacles(5 - x)
+                break
+            else:
+                readingОbstacles(1)
             
 
-
-
-    
 
 
