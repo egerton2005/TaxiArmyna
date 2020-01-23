@@ -30,8 +30,8 @@ def gyroSensorIsTrue():
     angle = gyroSensor.angle() % 360
     return (angle < 80 or angle > 110)
     
-#поворот на 90 градусов
-#angle - угол(градусов)
+#povorot поворачивает двумя моторами на 90 градусов
+#angle - данные об угле поворота моторов
 def povorot(angle):
     leftMotor.reset_angle(0)
     if(angle<0):
@@ -46,7 +46,7 @@ def povorot(angle):
         rightMotor.stop
 
 #ехать вперёд
-#left,right моторы
+#left,right значения левого и правого моторов
 def motorRule(left,right):
     leftMotor.run(left)
     rightMotor.run(right)
@@ -56,14 +56,15 @@ def goforward(left,right,times):
     print("проехать вперёд:" + str(time))
     leftMotor.run(left)
     rightMotor.run(right)
+    print("записываем время")
     oldTime = time.time()
     while(True):
+        print("записываем время второй раз")
         newTime = time.time()
+        print("находим разность нового и старого времени и сравниваем с заданым временем")
         if(newTime - oldTime >=times):
             break
-    leftMotor.stop()
-    rightMotor.stop()
-
+        
 #езда по черной линии
 #crossroadCounts - кол-во перекрестков, которые необходимо проехать
 #комментарии в самом методе
