@@ -21,9 +21,9 @@ colorSensorLeft = ColorSensor(Port.S3)
 gyroSensor = GyroSensor(Port.S1)
 # CONST
 Const_povovorot = 200
-Const_reflection_limit = 10
-Const_speed_fline = 150
-Const_slow_speed_fline = 50
+Const_reflection_limit = 15
+Const_speed_fline = 120
+Const_slow_speed_fline = 60
 Const_speed_motors = 50
 Const_speed_goforward = 100
 
@@ -47,7 +47,6 @@ def povorot(angle):
     while(True):
         if abs(leftMotor.angle()) >= abs(angle):
             break
-
     motorsStop()
 
 #езда прямо, запускающая сразу 2 мотора
@@ -61,7 +60,7 @@ def motorRule(left,right):
 # times время пути
 def goforward(left,right,times):
     print("проехать вперёд:" + str(time))
-    motorRule(left, right)
+    motorRule(left,right)
     print("записываем время")
     oldTime = time.time()
     print("записываем время второй раз")
@@ -70,16 +69,26 @@ def goforward(left,right,times):
         newTime = time.time()
         if(newTime - oldTime >=times):
             break
+    
+
+def scrolling(angle):
+    scrollingMotor.reset_angle(0)
+    scrollingMotor.run(Const_speed_goforward)
+    while(True):
+        if(scrollingMotor.angle() >= angle):
+            scrollingMotor.stop
+            break
 
 # bucket запускает ковш для захвата кубика
 # speed,times задаваемое время и скорость
-def bucket(speed,times):
-    captureMotor.run(speed)
-    oldTime = time.time()
+def bucket(times):
+    captureMotor.reset_angle(0)
+    captureMotor.run(Const_speed_goforward)
     while(True):
-        newTime = time.time()
-        if(newTime - oldTime >=times):
+        if(captureMotor.angle() >= angle):
+            captureMotor.stop
             break
+
 
 #езда по черной линии
 #crossroadCounts - кол-во перекрестков, которые необходимо проехать
@@ -101,7 +110,6 @@ def crossroad (crossroadCounts):
         else:
             blackLine = False
             if(crossroad == crossroadCounts):
-                motorsStop()
                 break
 
 #оба мотора останавливаются 
@@ -120,21 +128,23 @@ def readingОbstacles (obstacleCounts):
         if(iteration % 3 == 0):
             reflectionLEFT = colorSensorLeft.reflection()
             reflectionRight = colorSensorRight.reflection()
-            print("сравниваем значения")
+            
             fline(reflectionLEFT, reflectionRight)
 
         if (colorSensor.color() != None and gyroSensorIsTrue()):
             if(readingОbstacles == False):
-                brick.sound.beeps(5)
+                motorsStop()
                 print("увидел новое препядствие")
                 obstacle = obstacle + 1
+                brick.sound.beeps(5)
+                motorsStop()
             readingОbstacles = True
             if(obstacle >= obstacleCounts):
                 print("остоновился")
                 break
         else:
             readingОbstacles == False
-        iteration = iteration + 1
+            iteration = iteration + 1
 
 #езда по чёрной линии
 #reflectionLEFT, reflectionRight степень отражённости света (для езды по чёрной линии)
@@ -152,12 +162,25 @@ def fline(reflectionLEFT, reflectionRight):
 
 #считывает цвет и возвращает его
 def thisColor():
-    if colorSensor.color() != None:
-        color = colorSensor.color()
-        print("color")
+    while(True):
+        if colorSensor.color() != None:
+            color = filterColor()
+            print("color")
+        else:
+            print('не увидел цвет')
+        return
+
+# разделяет и записывает нужный цвет
+def filterColor():
+    color = colorSensor.color()
+    trueColors = [Color.BLUE, Color.GREEN, Color.YELLOW, Color.RED]
+    if color in trueColors:
+        print(color)
+        return color
     else:
-        print('не увидел цвет')
-    return
+        print(None)
+        return None
+
 
 def findColor():
     while(True):
@@ -166,14 +189,19 @@ def findColor():
 
 #распределяет цвет кубика на цвет целиндра 
 def distributor():
+    bucket(-160, 3)
     for step in range(0,6):
         readingОbstacles(1) #Проехал до кубика
+        motorsStop()
+        scrolling(200)
+        bucket(120)
+        scrolling(-200)
+        bucket(-240)
         print("distributor:" + str(readingОbstacles))
         colorFirst = thisColor() #считал цвет кубика
         print('colorFirst:'+str(colorFirst))
         motorsStop()
         print("опустил ковш")
-        bucket(-Const_speed_goforward, 1.5)
         print("поднял ковш")
         readingОbstacles(5 - step + 1)
         for x in range(0,6):
@@ -182,7 +210,6 @@ def distributor():
             if(colorFirst==colorSecond & location[x] == False):
                 print("сравнил")
                 location[x] == True
-                bucket(Const_speed_goforward, 1.5)
                 print('Поставил:')
                 readingОbstacles(5 - x)
                 print("readingОbstacles:" + str(step))
@@ -191,9 +218,11 @@ def distributor():
                 readingОbstacles(1)
                 print("повторяем")
 
+def program():
+    gyroSensor.reset_angle(0)
+    goforward(Const_speed_goforward,Const_speed_goforward, 1.5)
+    crossroad(1)
+    povorot(-Const_povovorot)
+    distributor()
 
-gyroSensor.reset_angle(0)
-goforward(Const_speed_goforward, Const_speed_goforward, 1.5)
-crossroad(1)
-povorot(-Const_povovorot)
-distributor()
+program()
