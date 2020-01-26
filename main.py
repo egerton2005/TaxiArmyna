@@ -33,7 +33,7 @@ location = [False,False,False,False,False,False]
 # 80 и 110 градусами то метод выдаёт ложь
 def gyroSensorIsTrue():
     angle = gyroSensor.angle() % 360
-    return (angle < 80 or angle > 110)
+    return (angle < 60 or angle > 120)
     
 #povorot поворачивает двумя моторами
 #angle - данные об угле поворота моторов
@@ -61,31 +61,36 @@ def motorRule(left,right):
 def goforward(left,right,times):
     print("проехать вперёд:" + str(time))
     motorRule(left,right)
-    print("записываем время")
     oldTime = time.time()
-    print("записываем время второй раз")
-    print("находим разность нового и старого времени и сравниваем с заданым временем")
     while(True):
         newTime = time.time()
         if(newTime - oldTime >=times):
             break
     
 
+# поднимает и опускает bucket
+# angle - градусы на которые нужно поднять или опустить bucket
 def scrolling(angle):
     scrollingMotor.reset_angle(0)
-    scrollingMotor.run(Const_speed_goforward)
+    if(angle<0):
+        scrollingMotor.run(-Const_speed_goforward)
+    else:
+        scrollingMotor.run(Const_speed_goforward)
     while(True):
-        if(scrollingMotor.angle() >= angle):
+        if abs(scrollingMotor.angle()) >= abs(angle):
             scrollingMotor.stop
             break
 
 # bucket запускает ковш для захвата кубика
-# speed,times задаваемое время и скорость
-def bucket(times):
+# angle задаваемые градусы
+def bucket(angle):
     captureMotor.reset_angle(0)
-    captureMotor.run(Const_speed_goforward)
+    if(angle<0):
+        captureMotor.run(-Const_speed_goforward)
+    else:
+        captureMotor.run(Const_speed_goforward)
     while(True):
-        if(captureMotor.angle() >= angle):
+        if abs(captureMotor.angle()) >= abs(angle):
             captureMotor.stop
             break
 
@@ -124,6 +129,9 @@ def readingОbstacles (obstacleCounts):
     obstacle = 0   
     readingОbstacles = False
     iteration = 0
+    if filterColor() != None:
+        readingОbstacles = True
+
     while(True):
         if(iteration % 3 == 0):
             reflectionLEFT = colorSensorLeft.reflection()
@@ -136,7 +144,6 @@ def readingОbstacles (obstacleCounts):
                 motorsStop()
                 print("увидел новое препядствие")
                 obstacle = obstacle + 1
-                brick.sound.beeps(5)
                 motorsStop()
             readingОbstacles = True
             if(obstacle >= obstacleCounts):
@@ -145,6 +152,7 @@ def readingОbstacles (obstacleCounts):
         else:
             readingОbstacles == False
             iteration = iteration + 1
+
 
 #езда по чёрной линии
 #reflectionLEFT, reflectionRight степень отражённости света (для езды по чёрной линии)
@@ -170,47 +178,49 @@ def thisColor():
             print('не увидел цвет')
         return
 
-# разделяет и записывает нужный цвет
+# разделяет и возвращает нужный цвет
 def filterColor():
     color = colorSensor.color()
     trueColors = [Color.BLUE, Color.GREEN, Color.YELLOW, Color.RED]
     if color in trueColors:
-        print(color)
         return color
     else:
-        print(None)
         return None
 
-
-def findColor():
+def sleep(times):
+    oldTime = time.time()
     while(True):
-        colorSensor.color()  
-        print(colorSensor.color())
+        newTime = time.time()
+        if(newTime - oldTime >=times):
+            break
 
 #распределяет цвет кубика на цвет целиндра 
 def distributor():
-    bucket(-160, 3)
     for step in range(0,6):
         readingОbstacles(1) #Проехал до кубика
         motorsStop()
-        scrolling(200)
-        bucket(120)
-        scrolling(-200)
-        bucket(-240)
+        goforward(Const_speed_goforward, Const_speed_goforward, 0.3)
+        motorsStop()
+        scrolling(500)
+        bucket(200) # - это вверх, + это вниз
+        scrolling(-500) #+ это вверх, - это вниз
+        sleep(1)
+        bucket(-300)
+        scrolling(500)
         print("distributor:" + str(readingОbstacles))
         colorFirst = thisColor() #считал цвет кубика
         print('colorFirst:'+str(colorFirst))
-        motorsStop()
-        print("опустил ковш")
-        print("поднял ковш")
-        readingОbstacles(5 - step + 1)
+        readingОbstacles(1)
         for x in range(0,6):
             colorSecond = thisColor()
             print('colorSecond:'+ str(colorSecond))
-            if(colorFirst==colorSecond & location[x] == False):
+            if(colorFirst==colorSecond and location[x] == False):
                 print("сравнил")
+                goforward(Const_speed_goforward, Const_speed_goforward, 0.3)
+                motorsStop()
                 location[x] == True
                 print('Поставил:')
+                bucket(150)
                 readingОbstacles(5 - x)
                 print("readingОbstacles:" + str(step))
                 break
@@ -224,5 +234,10 @@ def program():
     crossroad(1)
     povorot(-Const_povovorot)
     distributor()
+    crossroad(2)
+    bucket(-500)
+    scrolling(-600)
+    distributor()
+
 
 program()
