@@ -26,8 +26,12 @@ Const_speed_fline = 120
 Const_slow_speed_fline = 60
 Const_speed_motors = 50
 Const_speed_goforward = 100
-
+Const_speed_goforvard = 400
+Const_speed_scrolling = 1500
+Const_speed_capture = 900
 location = [False,False,False,False,False,False]
+
+lastColor = None
 
 #измеряет угол поворота относительно начала и если робот находится в промежутке между 
 # 80 и 110 градусами то метод выдаёт ложь
@@ -73,9 +77,9 @@ def goforward(left,right,times):
 def scrolling(angle):
     scrollingMotor.reset_angle(0)
     if(angle<0):
-        scrollingMotor.run(-Const_speed_goforward)
+        scrollingMotor.run(-Const_speed_goforvard)
     else:
-        scrollingMotor.run(Const_speed_goforward)
+        scrollingMotor.run(Const_speed_goforvard)
     while(True):
         if abs(scrollingMotor.angle()) >= abs(angle):
             scrollingMotor.stop
@@ -86,12 +90,12 @@ def scrolling(angle):
 def bucket(angle):
     captureMotor.reset_angle(0)
     if(angle<0):
-        captureMotor.run(-Const_speed_goforward)
+        captureMotor.run(-Const_speed_goforvard)
     else:
-        captureMotor.run(Const_speed_goforward)
+        captureMotor.run(Const_speed_goforvard)
     while(True):
         if abs(captureMotor.angle()) >= abs(angle):
-            captureMotor.stop
+            captureMotor.stop()
             break
 
 
@@ -125,6 +129,7 @@ def motorsStop():
 #readingОbstacles считывание препятствий
 #obstacleCounts кол-во препятствий 
 def readingОbstacles (obstacleCounts):
+    global lastColor
     print('readingОbstacles:'+str(obstacleCounts))
     obstacle = 0   
     readingОbstacles = False
@@ -138,9 +143,10 @@ def readingОbstacles (obstacleCounts):
             reflectionRight = colorSensorRight.reflection()
             
             fline(reflectionLEFT, reflectionRight)
-
-        if (colorSensor.color() != None and gyroSensorIsTrue()):
+        color = colorSensor.color()
+        if (color != None and gyroSensorIsTrue() and color != lastColor):
             if(readingОbstacles == False):
+                lastColor = color
                 print("увидел новое препядствие")
                 obstacle = obstacle + 1
             readingОbstacles = True
@@ -148,8 +154,8 @@ def readingОbstacles (obstacleCounts):
                 print("остоновился")
                 motorsStop()
                 break
-        else:
-            readingОbstacles == False
+        elif(color == None):
+            readingОbstacles = False
             iteration = iteration + 1
 
 
@@ -169,13 +175,15 @@ def fline(reflectionLEFT, reflectionRight):
 
 #считывает цвет и возвращает его
 def thisColor():
+    iteration = 0
     while(True):
+        if iteration >= 10:
+            return lastColor
         if colorSensor.color() != None:
             color = filterColor()
             print("color")
-        else:
-            print('не увидел цвет')
-        return
+            return color
+        iteration = iteration + 1
 
 # разделяет и возвращает нужный цвет
 def filterColor():
@@ -184,12 +192,11 @@ def filterColor():
     if color in trueColors:
         if color == Color.BLUE:
             if color.reflection < reflection_limit:
-                color == Color.WHITE
-                print(color)
+                color = Color.WHITE
+                return color
+            else:
                 return color
         else:
-            color == Color.BLUE
-            print(color) 
             return color
     else:
         return None
@@ -203,37 +210,41 @@ def sleep(times):
 
 #распределяет цвет кубика на цвет целиндра 
 def distributor():
+    global lastColor
     for step in range(0,6):
         readingОbstacles(1) #Проехал до кубика
         motorsStop()
-        goforward(Const_speed_goforward, Const_speed_goforward, 0.3)
+        goforward(Const_speed_goforward, Const_speed_goforward, 1)
         motorsStop()
-        scrolling(300)
-        print("провернул")
-        bucket(250) # - это вверх, + это вниз
+        # scrolling(-Const_speed_scrolling)
         print("опустил")
-        scrolling(-300) #+ это вверх, - это вниз
-        print("провернул")
+        # bucket(-Const_speed_capture) # - это вверх, + это вниз
+        print("схватил")
+        # scrolling(Const_speed_scrolling) #+ это вверх, - это вниз
+        print("поднял")
         sleep(1)
-        bucket(-270)
-        print("взял")
-        scrolling(300)
-        print("провернул")
         print("distributor:" + str(readingОbstacles))
         colorFirst = thisColor() #считал цвет кубика
         print('colorFirst:'+str(colorFirst))
+        readingОbstacles(4 - step)
+        lastColor = None
         readingОbstacles(1)
         for x in range(0,6):
             colorSecond = thisColor()
             print('colorSecond:'+ str(colorSecond))
             if(colorFirst==colorSecond and location[x] == False):
                 print("сравнил")
-                location[x] == True
+                location[x] = True
                 sleep(2)
+                goforward(Const_speed_goforward, Const_speed_goforward, 1)
                 print('Поставил:')
-                bucket(150)
-                readingОbstacles(5 - x)
+                # bucket(Const_speed_capture)
+                readingОbstacles(4 - x)
+                lastColor = None
+                readingОbstacles(1)
+
                 print("readingОbstacles:" + str(step))
+                
                 break
             else:
                 readingОbstacles(1)
@@ -246,25 +257,17 @@ def program():
     crossroad(1)
     povorot(-Const_povovorot)
     distributor()
-    crossroad(1)
-    bucket(-500)
-    scrolling(-600)
-    distributor()
-    crossroad(1)
-    bucket(-500)
-    scrolling(-600)
-    distributor()
-    crossroad(1)
-    bucket(-500)
-    scrolling(-600)
-    distributor()
-    crossroad(1)
-    bucket(-500)
-    scrolling(-600)
-    distributor()
-    crossroad(1)
-    bucket(-500)
-    scrolling(-600)
-    distributor()
+    # crossroad(1)
+    # bucket(-500)
+    # scrolling(-600)
+    # distributor()
 
-filterColor()
+# bucket(Const_speed_capture)
+# scrollingMotor.reset_angle(0)
+# scrollingMotor.run(-Const_speed_goforvard)
+# while(True):
+#     print(scrollingMotor.angle())
+        # bucket - это вверх, + это вниз
+        # scrolling + это вверх, - это вниз
+        # 38500
+program()
